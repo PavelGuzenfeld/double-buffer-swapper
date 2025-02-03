@@ -10,14 +10,57 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(cmake-library REQUIRED)
 find_package(fmt REQUIRED)
 
-# executable and linking
+# Library header-only
+add_library(${PROJECT_NAME} INTERFACE)
+
+target_include_directories(${PROJECT_NAME}
+    INTERFACE
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+        $<INSTALL_INTERFACE:include>
+)
+
+# Install header files so that the installed "include" directory exists.
+install(
+    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
+    DESTINATION include
+)
+
+# Test executable
 add_executable(${PROJECT_NAME}_test test/double_buffer_swapper_test.cpp)
-target_include_directories(${PROJECT_NAME}_test PUBLIC include)
+target_include_directories(${PROJECT_NAME}_test PRIVATE include)
 target_link_libraries(${PROJECT_NAME}_test PRIVATE fmt)
 
 set_debug_options(${PROJECT_NAME}_test)
 enable_sanitizers(${PROJECT_NAME}_test)
 
-# installation: properly install headers and binaries
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/include/ DESTINATION include)
-install(TARGETS ${PROJECT_NAME}_test DESTINATION bin)
+# Export the target
+install(
+    TARGETS ${PROJECT_NAME}_test
+    EXPORT ${PROJECT_NAME}Targets
+    DESTINATION bin
+)
+
+# Configure package files
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}
+  NO_SET_AND_CHECK_MACRO
+  NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+
+# Install the package configuration files
+install(
+  FILES 
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+# Install the export file
+install(
+    EXPORT ${PROJECT_NAME}Targets
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
