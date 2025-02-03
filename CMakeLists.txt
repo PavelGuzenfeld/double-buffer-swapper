@@ -10,20 +10,50 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 find_package(cmake-library REQUIRED)
 find_package(fmt REQUIRED)
 
-# Library header-only
+# Create an INTERFACE library target for the header-only library.
 add_library(${PROJECT_NAME} INTERFACE)
 
 target_include_directories(${PROJECT_NAME}
     INTERFACE
-        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-        $<INSTALL_INTERFACE:include>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+      $<INSTALL_INTERFACE:include>
 )
 
-# Install header files so that the installed "include" directory exists.
+# Install header files
 install(
     DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
     DESTINATION include
 )
+
+# Export the target so that consumers can use the namespaced alias.
+install(
+    TARGETS ${PROJECT_NAME}
+    EXPORT ${PROJECT_NAME}Targets
+    INCLUDES DESTINATION include
+)
+
+install(
+    EXPORT ${PROJECT_NAME}Targets
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE ${PROJECT_NAME}::
+    DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
+# Configure the package configuration file.
+include(CMakePackageConfigHelpers)
+configure_package_config_file(
+  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in"
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}
+  NO_SET_AND_CHECK_MACRO
+  NO_CHECK_REQUIRED_COMPONENTS_MACRO
+)
+
+install(
+  FILES "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  DESTINATION lib/cmake/${PROJECT_NAME}
+)
+
 
 # Test executable
 add_executable(${PROJECT_NAME}_test test/double_buffer_swapper_test.cpp)
@@ -38,29 +68,4 @@ install(
     TARGETS ${PROJECT_NAME}_test
     EXPORT ${PROJECT_NAME}Targets
     DESTINATION bin
-)
-
-# Configure package files
-include(CMakePackageConfigHelpers)
-configure_package_config_file(
-  "${CMAKE_CURRENT_SOURCE_DIR}/cmake/${PROJECT_NAME}Config.cmake.in"
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-  INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}
-  NO_SET_AND_CHECK_MACRO
-  NO_CHECK_REQUIRED_COMPONENTS_MACRO
-)
-
-# Install the package configuration files
-install(
-  FILES 
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-  DESTINATION lib/cmake/${PROJECT_NAME}
-)
-
-# Install the export file
-install(
-    EXPORT ${PROJECT_NAME}Targets
-    FILE ${PROJECT_NAME}Targets.cmake
-    NAMESPACE ${PROJECT_NAME}::
-    DESTINATION lib/cmake/${PROJECT_NAME}
 )
